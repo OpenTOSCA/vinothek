@@ -1,0 +1,211 @@
+body {
+	background: url('images/background.jpg');
+	margin: 0px;
+	font-size: 13px;
+	color: #5f5f5f;
+	font-family: Calibri, Arial, Verdana;
+}
+
+div.mainContainer {
+	position: absolute;
+	left: 50%;
+	margin-left: -487px;
+	width: 973px;
+	height: 768px;
+	background: url('images/overviewContainerBackground.jpg');
+}
+
+div.appIconRowContainer {
+	height: 206px;
+	width: 900px;
+	position: absolute;
+	left: 69px;
+	padding-left: 30px;
+}
+
+div.appIconRowContainer#row1 {
+	top: 246px;
+}
+
+div.appIconContainer {
+	width: 156px;
+	height: 201px;
+	background: url('images/AppIconBackground.png');
+	float: left;
+	position: relative;
+}
+
+div.appIconContainer  img {
+	position: relative;
+	top: 45px;
+	left: 21px;
+}
+
+div.appIconContainerForeground {
+	width: 156px;
+	height: 206px;
+	background: url('images/AppIconForeground.png');
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+a#StartInstanceButton {
+	background: url('images/StartInstanceButton.png');
+	width: 245px;
+	height: 84px;
+	float: left;
+}
+
+a#StartInstanceButton:hover {
+	background: url('images/StartInstanceButtonHover.png');
+}
+
+div#actionContainer {
+	height: 84px;
+	width: 811px;
+	position: absolute;
+	left: 69px;
+	top: 577px;
+}
+
+div#contentContainer {
+	height: 220px;
+	width: 775px;
+	position: absolute;
+	left: 100px;
+	top: 330px;
+}
+
+div#screenshotContainer {
+	float: left;
+	width: 300px;
+	height: 220px;
+}
+
+div#screenshotContainer>img {
+	box-shadow: 5px 5px 10px #AEAEAE;
+	border: 1px solid #AEAEAE;
+}
+
+div#descriptionContainer {
+	text-align: justify;
+}
+
+div#actionContainer>div#optionSelectionContainer {
+	width: 260px;
+	padding-left: 40px;
+	float: left;
+	padding-top: 30px;
+}
+
+div#SelectOptionButton {
+	background: url('images/GenericButton.png');
+	position: absolute;
+	width: 245px;
+	height: 84px;
+	top: -1%;
+	float: left;
+}
+
+div#SelectOptionButton:hover {
+	background: url('images/GenericButtonHover.png');
+}
+
+img#SelectedOptionImage{
+	position: absolute;
+	top: 32%;
+	left: 15%;
+	width: 30px;
+	height: 30px;
+	float :left;
+}
+
+img#SelectOptionButtonImage{
+	position: absolute;
+	top:32%;
+	right:15%;
+	width: 30px;
+	height: 30px;
+}
+
+span#SelectOptionButtonText{
+	position: absolute;
+	top: 40%;
+	left: 29%;
+	font-size: 16px;
+	color: #e2e2e2;
+	font-family: Calibri, Arial, Verdana;
+	text-align: justify;
+}
+
+div#loadingContainer {
+	height: 84px;
+	width: 811px;
+	position: absolute;
+	left: 69px;
+	top: 577px;
+	text-align: center;
+	display: none;
+}
+
+div#applicationUrlContainer {
+	height: 84px;
+	width: 811px;
+	position: absolute;
+	left: 69px;
+	top: 577px;
+	padding-top: 5px;
+	text-align: center;
+	display: none;
+}
+
+div#actionContainer>div#optionSelectionContainer>select {
+	width: 230px;
+}
+
+#OptionList{
+	list-style-type: none; 
+	margin: 0; 
+	padding: 0; 
+	width: auto;
+	height: auto;
+	max-width: 100%;
+	border-collapse: collapse;
+}
+
+#OptionList .ui-selecting{
+	background: #82a2b6;
+}
+
+#OptionList .ui-selected{
+	background: #7195ac;
+}
+
+#OptionListItem {
+	vertical-align: top;
+}
+
+#OptionListName{
+	max-width: 500px;
+}
+
+#OptionListText{
+	max-width:500px;
+}
+
+div.newAppHidden {
+	float: left;
+	width: 0px;
+	height: 100px;
+}
+
+div.newAppShown {
+	float: left;
+	height: 201px;
+	display: inline;
+}
+
+div.newAppHidden>a {
+	display: none;
+}
