@@ -191,7 +191,7 @@ div.appIconRowContainer#row1>span.mirror {
 						<%}else{ %>
 							<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()%>
 						<%} %>
-						</span> <img id="SelectOptionButtonImage" src="images/pencil.png">
+						</span>
 					</span></div>
 				</a>
 			</div>
