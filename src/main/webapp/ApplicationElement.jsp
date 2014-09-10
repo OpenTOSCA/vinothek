@@ -108,7 +108,7 @@
 		var imgElement = tdElements[0].getElementsByTagName("img")[0];
 		var pElements = tdElements[1].getElementsByTagName("p");
 		var imgSrc = imgElement.src;
-		var optionName = pElements[0].getElementsByTagName("u")[0].innerText;
+		var optionName = pElements[0].innerHTML;
 		var optionButton = $("#SelectOptionButton")[0];
 		var optionButtonImage = $("#SelectedOptionImage")[0];
 		var optionButtonText = $("#SelectOptionButtonText")[0];
@@ -116,11 +116,14 @@
 		// set data on button
 		optionButton.setAttribute("optionId", optionIdName);
 		optionButtonImage.setAttribute("src", imgSrc);
-		// we allow max. 16 chars, so if >16 we replace last 3 chars with dots
-		if (optionName.length > 11) {
-			optionName = optionName.substring(0, 11) + "..";
+		// we allow max. 21 chars, so if >21 we replace last 3 chars with dots
+		if (optionName.length > 21) {
+			optionName = optionName.substring(0, 18) + "...";
 		}
 		optionButtonText.textContent = optionName;
+
+		// Close Dialog
+		$("#OptionDialog").dialog("close");
 	}
 </script>
 
@@ -208,9 +211,7 @@ div.appIconRowContainer#row1>span.mirror {
 					<tr class="ui-widget-content" optionId="<%=o.getId()%>">
 						<td id="OptionListItem"><img src="<%=app.convertToAbsoluteUrl(o.getIconUrl())%>"></td>
 						<td id="OptionListItem">
-							<p id="OptionListName">
-								<u><%=o.getName()%></u>
-							</p>
+							<p id="OptionListName"><%=o.getName()%></p>
 							<p id="OptionListText"><%=o.getDescription()%></p>
 						</td>
 					</tr>
