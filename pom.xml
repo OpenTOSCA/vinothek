@@ -2,10 +2,10 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.opentosca</groupId>
-  <artifactId>Vinothek</artifactId>
+  <artifactId>vinothek</artifactId>
   <packaging>war</packaging>
-  <version>1.0-SNAPSHOT</version>
-  <name>Vinothek</name>
+  <version>1.1</version>
+  <name>vinothek</name>
   <url>http://www.opentosca.org</url>
   
   <repositories>
@@ -95,6 +95,32 @@
 				<configuration>
 					<wtpversion>2.0</wtpversion>
 				</configuration>
+			</plugin>
+			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.4.2</version>
+				<executions>
+				  <execution>
+					<id>default-copy-resources</id>
+					<phase>test</phase>
+					<goals>
+					  <goal>copy-resources</goal>
+					</goals>
+					<configuration>
+					  <overwrite>true</overwrite>
+					  <outputDirectory>${project.build.directory}/${project.artifactId}/</outputDirectory>
+					  <resources>
+						<resource>
+						  <directory>${project.basedir}</directory>
+						  <include>NOTICE</include>
+						  <include>LICENSE</include>
+						</resource>
+					  </resources>
+					</configuration>
+				  </execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</pluginManagement>
