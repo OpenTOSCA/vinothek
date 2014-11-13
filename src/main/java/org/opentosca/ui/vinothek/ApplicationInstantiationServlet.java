@@ -62,6 +62,15 @@ public class ApplicationInstantiationServlet extends HttpServlet {
 		planInputMessage = planInputMessage.replace("%CALLBACK-URL%", callbackEndpoint);
 		// Set Correlation Id
 		planInputMessage = planInputMessage.replace("%CORRELATION-ID%", applicationInstance.getCallbackId());
+		// set csar entrypoint on container
+		planInputMessage = planInputMessage.replace("%CSARENTRYPOINT-URL%", CONFIG.CONTAINER_API + "/CSARs/" + application.getCsarName());
+		// set callback address for the invoker ( BPS 2.x needs this as it is unable to fetch it itself
+		String planInvokerCallbackEndpoint = "http://" + client.getContainerHost() + ":9763/services/InvokerService/";
+		planInputMessage = planInputMessage.replace("%PLANCALLBACKINVOKER-URL%", planInvokerCallbackEndpoint);
+		
+		// set url for instancedata api
+		String instanceDataApiEndpoint = CONFIG.CONTAINER_API +"/instancedata";
+		planInputMessage = planInputMessage.replace("%INSTANCEDATA-URL%", instanceDataApiEndpoint);
 		
 		// Send plan input message to plan endpoint
 		String planEndpoint = "http://" + client.getContainerHost() + ":9763/services/" + selectedOption.getPlanServiceName() + "/";
