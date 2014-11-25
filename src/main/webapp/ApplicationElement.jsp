@@ -1,3 +1,4 @@
+<%@page import="org.apache.commons.lang3.StringEscapeUtils"%>
 <%@page import="org.opentosca.ui.vinothek.CallbackEndpointServlet"%>
 <%@page import="org.eclipse.winery.model.selfservice.ApplicationOption"%>
 <%@page import="org.opentosca.ui.vinothek.model.ApplicationWrapper"%>
@@ -9,8 +10,10 @@
 <%
 	try {
 		VinothekContainerClient client = new VinothekContainerClient(request);
+		
 		String applicationId = request.getParameter("applicationId");
 		ApplicationWrapper app = client.getApplication(applicationId);
+		
 %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -21,13 +24,26 @@
 <script src="jquery-1.8.2.min.js"></script>
 <link type="text/css" href="jquery-ui.css" rel="stylesheet">
 <script type="text/javascript" src="jquery-ui.min.js"></script>
+<link type="text/css" rel="stylesheet" href="lib/codemirror/codemirror.css">
+<script type="text/javascript" src="lib/codemirror/codemirror.js"></script>
+<script src="lib/codemirror/xml/xml.js"></script>
 
 <script>
+	// var of codemirror editor
+	var editor = null;
+
 	$(function(){
 		// init option dialog and option list
 		$("#OptionList").selectable({filter: "tr",selected : setOptionButton });
 		$("#OptionDialog").dialog({autoOpen: false,modal: true,resizable: true, width: "auto", height:600, maxWidth: 600, maxHeight: 600});
-
+		$("#EditInputDialog").dialog({autoOpen: false,modal: true,resizable: true, width: 600, height:"auto", buttons:{"OK": function(){closeEditPlanInputDialog();}}});		
+		
+		// init codemirror
+		var editorArea = $("#EditInputDialogContent")[0];		
+		editor = CodeMirror.fromTextArea(editorArea, {			 
+			  mode:  "xml"			  
+			});		
+		
 	});
 	
 	var checkCallbackStatusUrl = "";
@@ -35,20 +51,79 @@
 	
 	function startInstance() {
 		
-		var applicationId = "<%=applicationId%>";
-		var containerHost = "<%=client.getContainerHost()%>";
-		//var optionId = $("select#optionComboBox :selected").attr("id");
+		if(!inputMessageHasMissingFields()){
+		
+			var applicationId = "<%=applicationId%>";
+			var containerHost = "<%=client.getContainerHost()%>";
+			//var optionId = $("select#optionComboBox :selected").attr("id");
+			var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
+			var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+			var requestBody = optionInputMessageElement.textContent;
+		
+			var instantiateTriggeringUrl = "ApplicationInstantiation?container=" + containerHost + "&applicationId=" + applicationId + "&optionId=" + optionId;
+			
+			$.ajax({
+				url: instantiateTriggeringUrl,
+				data: {xml: requestBody},
+				success: function(data) {
+					checkCallbackStatusUrl = data;								
+				},
+				dataType: "text"
+				});
+			
+			$("#actionContainer").fadeOut("slow");
+			$("#loadingContainer").fadeIn("slow");
+			startWaitingForPlanResult();
+		} else {
+			alert("Application needs propery input data, please fill in the missing fields");
+		}
+	}
+	
+	function openEditPlanInputDialog(){
+		// fetch selected option, it's input message and the orion editor element
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
+		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+		var optionInputMessageValue = optionInputMessageElement.textContent;
 		
-		var instantiateTriggeringUrl = "ApplicationInstantiation?container=" + containerHost + "&applicationId=" + applicationId + "&optionId=" + optionId;
+		// format
+		optionInputMessageValue = formatXml(optionInputMessageValue);
 		
-		$.get(instantiateTriggeringUrl, function(data) {
-			checkCallbackStatusUrl = data;								
-		}, "text");
+		editor.setValue(optionInputMessageValue);
 		
-		$("#actionContainer").fadeOut("slow");
-		$("#loadingContainer").fadeIn("slow");
-		startWaitingForPlanResult();
+		// reindent etc.
+		var lineCount = editor.lineCount();		
+		for(var i = 0 ; i < lineCount; i++){
+			editor.indentLine(i);
+		}
+		
+		editor.save();		
+				
+		$("#EditInputDialog").dialog("open");
+		editor.refresh();
+	}
+	
+	function closeEditPlanInputDialog(){
+		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
+		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+		var editorContents = editor.getValue();
+		
+		// save input temporarily
+		optionInputMessageElement.textContent = editorContents;
+		
+		$("#EditInputDialog").dialog("close");
+	}
+	
+	function inputMessageHasMissingFields(){		
+		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
+		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+		var optionInputMessageValue = optionInputMessageElement.textContent;
+
+		// check whether we contain some empty/missing input
+		if(optionInputMessageValue.indexOf("Please fill in") != -1){
+			return true;
+		} else {
+			return false;
+		}
 	}
 			
 	function startWaitingForPlanResult() {
@@ -123,8 +198,40 @@
 		optionButtonText.textContent = optionName;
 
 		// Close Dialog
-		$("#OptionDialog").dialog("close");
+		$("#OptionDialog").dialog("close");		
 	}
+	
+	function formatXml(xml) {
+		var formatted = '';
+		var reg = /(>)(<)(\/*)/g;
+		xml = xml.replace(reg, '$1\r\n$2$3');
+		var pad = 0;
+		jQuery.each(xml.split('\r\n'), function(index, node) {
+		var indent = 0;
+		if (node.match( /.+<\/\w[^>]*>$/ )) {
+		indent = 0;
+		} else if (node.match( /^<\/\w/ )) {
+		if (pad != 0) {
+		pad -= 1;
+		}
+		} else if (node.match( /^<\w[^>]*[^\/]>.*$/ )) {
+		indent = 1;
+		} else {
+		indent = 0;
+		}
+		 
+		var padding = '';
+		for (var i = 0; i < pad; i++) {
+		padding += ' ';
+		}
+		 
+		formatted += padding + node + '\r\n';
+		pad += indent;
+		});
+		 
+		return formatted;
+	} 
+	
 </script>
 
 </head>
@@ -186,22 +293,35 @@ div.appIconRowContainer#row1>span.mirror {
 		<div id="actionContainer">
 			<div id="optionSelectionContainer">
 				<!-- Here must be some fancy button, which opens a dialog to select the options -->
-				<a href="javascript:openOptionDialog();" style="text-decoration: none;">
-					<div id="SelectOptionButton" optionId="<%=app.getOptions().getOption().get(0).getId()%>">
-						<img id="SelectedOptionImage" src="<%=app.convertToAbsoluteUrl(app.getOptions().getOption().get(0).getIconUrl())%>">
-						<%if(app.getOptions().getOption().get(0).getName().length() > 11){ %>
-							<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName().substring(0,11)+ ".." %>
-						<%}else{ %>
-							<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()%>
-						<%} %>
+				<a href="javascript:openOptionDialog();"
+					style="text-decoration: none;">
+					<div id="SelectOptionButton"
+						optionId="<%=app.getOptions().getOption().get(0).getId()%>">
+						<img id="SelectedOptionImage"
+							src="<%=app.convertToAbsoluteUrl(app.getOptions().getOption().get(0).getIconUrl())%>">
+						<%
+							if (app.getOptions().getOption().get(0).getName().length() > 11) {
+						%>
+						<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()
+							.substring(0, 11)
+							+ ".."%>
+							<%
+								} else {
+							%> <span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()%>
+								<%
+									}
+								%>
 						</span>
-					</span></div>
+						</span>
+					</div>
 				</a>
 			</div>
 
-			<a href="javascript:startInstance();" id="StartInstanceButton"></a>
+			<a href="javascript:startInstance();" id="StartInstanceButton"></a> 
+			<a href="javascript:openEditPlanInputDialog();" id="EditInputButton">
+				<span id="EditInputButtonText">Edit Parameters</span>
+			</a>
 
-			
 
 			<div id="OptionDialog" title="Select Option">
 				<table id="OptionList">
@@ -209,10 +329,12 @@ div.appIconRowContainer#row1>span.mirror {
 						for (ApplicationOption o : app.getOptions().getOption()) {
 					%>
 					<tr class="ui-widget-content" optionId="<%=o.getId()%>">
-						<td id="OptionListItem"><img src="<%=app.convertToAbsoluteUrl(o.getIconUrl())%>"></td>
+						<td id="OptionListItem"><img
+							src="<%=app.convertToAbsoluteUrl(o.getIconUrl())%>"></td>
 						<td id="OptionListItem">
 							<p id="OptionListName"><%=o.getName()%></p>
 							<p id="OptionListText"><%=o.getDescription()%></p>
+							<div id="OptionListInput" style="display: none;" optionId="<%=o.getId()%>"><%=StringEscapeUtils.escapeHtml4(client.get(app, o.getPlanInputMessageUrl()))%></div>
 						</td>
 					</tr>
 					<%
@@ -221,24 +343,28 @@ div.appIconRowContainer#row1>span.mirror {
 				</table>
 			</div>
 
-			
+			<div id="EditInputDialog" title="Please fill in the unspecified fields">			
+				<textarea id="EditInputDialogContent" style="width:100%;height:auto"></textarea>	
+			</div>
 
 		</div>
-			<div id="loadingContainer">
-				<br>
-				<!-- Generated by http://www.ajaxload.info/ -->
-				<img src="images/loadingAnimation.gif"> <br> <span>Instantiating
-					Application... Please wait</span>
-			</div>
-			<div id="applicationUrlContainer">
-				<a id="playButton" href="javascript:startApplication();"><img id="playSymbol" style="border: 0px; display: none;" height="59px" src="images/playbutton.png"></a> 
-				<img id="failedSymbol" style="border: 0px; display: none;" height="59px" src="images/failSymbol.png" />
-				<img id="successSymbol" style="border: 0px; display: none;" height="59px" src="images/successSymbol.png" /> 
-				<br>
-				
-				<span id="SelfserviceMessage">Provisioning finished.</span>
-				<!-- <span id="SelfservicePolicyMessage"></span> -->
-			</div>
+		<div id="loadingContainer">
+			<br>
+			<!-- Generated by http://www.ajaxload.info/ -->
+			<img src="images/loadingAnimation.gif"> <br> <span>Instantiating
+				Application... Please wait</span>
+		</div>
+		<div id="applicationUrlContainer">
+			<a id="playButton" href="javascript:startApplication();"><img
+				id="playSymbol" style="border: 0px; display: none;" height="59px"
+				src="images/playbutton.png"></a> <img id="failedSymbol"
+				style="border: 0px; display: none;" height="59px"
+				src="images/failSymbol.png" /> <img id="successSymbol"
+				style="border: 0px; display: none;" height="59px"
+				src="images/successSymbol.png" /> <br> <span
+				id="SelfserviceMessage">Provisioning finished.</span>
+			<!-- <span id="SelfservicePolicyMessage"></span> -->
+		</div>
 </body>
 
 <%

@@ -144,8 +144,8 @@ public class VinothekContainerClient {
 		}
 	}
 
-	protected String get(ApplicationWrapper application, String url) {
+	public String get(ApplicationWrapper application, String url) {
 		return get(application.convertToAbsoluteUrl(url));
-	}
+	}		
 
 }

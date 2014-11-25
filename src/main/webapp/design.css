@@ -61,6 +61,31 @@ a#StartInstanceButton:hover {
 	background: url('images/StartInstanceButtonHover.png');
 }
 
+a#EditInputButton {
+	background: url('images/GenericButton.png');
+	position: absolute;
+	width: 245px;
+	height: 84px;	
+	float: right;
+}
+
+a#EditInputButton:hover {
+	background: url('images/GenericButtonHover.png');
+}
+
+a#CloseEditInputDialogButton {
+	background: url('images/GenericButton.png');
+	position: absolute;
+	width: 245px;
+	height: 84px;	
+	float: right;
+}
+
+a#CloseEditInputDialogButton:hover {
+	background: url('images/GenericButtonHover.png');
+}
+
+
 div#actionContainer {
 	height: 84px;
 	width: 811px;
@@ -127,6 +152,16 @@ img#SelectOptionButtonImage{
 	right:15%;
 	width: 30px;
 	height: 30px;
+}
+
+span#EditInputButtonText{
+	position: absolute;
+	top: 40%;
+	left: 29%;
+	font-size: 16px;
+	color: #e2e2e2;
+	font-family: Calibri, Arial, Verdana;
+	text-align: justify;
 }
 
 span#SelectOptionButtonText{

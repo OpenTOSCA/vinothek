@@ -1,5 +1,6 @@
 package org.opentosca.ui.vinothek;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 
 import javax.servlet.ServletException;
@@ -24,10 +25,10 @@ public class ApplicationInstantiationServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
-		response.setContentType("text/plain");
+		response.setContentType("text/plain");		
 		
 		// Determine application and option
-		VinothekContainerClient client = new VinothekContainerClient(request);
+		VinothekContainerClient client = new VinothekContainerClient(request);		
 		String applicationId = request.getParameter("applicationId");
 		String optionId = request.getParameter("optionId");
 		if(applicationId == null || applicationId.length() < 1 || optionId == null || optionId.length() < 1) {
@@ -47,9 +48,15 @@ public class ApplicationInstantiationServlet extends HttpServlet {
 			throw new RuntimeException("Option " + optionId + " does not exist.");
 		}
 		ApplicationInstance applicationInstance = new ApplicationInstance(applicationId, client.getContainerUrl());
-
+	   	    	   
+	    String sentPlanInputMessage = request.getParameter("xml");	   
+	    
 		// Prepare plan invocation
 		String planInputMessage = client.get(application, selectedOption.getPlanInputMessageUrl());
+		
+		if(sentPlanInputMessage != null && sentPlanInputMessage.length() > 1){
+			planInputMessage = sentPlanInputMessage;
+		}
 		
 		// Adapt plan input message
 		String self = request.getRequestURL().toString().replace("/ApplicationInstantiation", "");
