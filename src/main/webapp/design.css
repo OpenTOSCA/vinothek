@@ -85,6 +85,15 @@ a#CloseEditInputDialogButton:hover {
 	background: url('images/GenericButtonHover.png');
 }
 
+.EditInputDialogTextArea{
+	min-height : 50px;
+	width : 100%;			
+	background-color : white !important;	
+	margin : 0px !important;
+	border : 0px !important;
+	padding : 0px !important;			
+	resize : none !important;
+}
 
 div#actionContainer {
 	height: 84px;

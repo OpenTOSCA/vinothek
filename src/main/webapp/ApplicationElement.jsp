@@ -36,7 +36,7 @@
 		// init option dialog and option list
 		$("#OptionList").selectable({filter: "tr",selected : setOptionButton });
 		$("#OptionDialog").dialog({autoOpen: false,modal: true,resizable: true, width: "auto", height:600, maxWidth: 600, maxHeight: 600});
-		$("#EditInputDialog").dialog({autoOpen: false,modal: true,resizable: true, width: 600, height:"auto", buttons:{"OK": function(){closeEditPlanInputDialog();}}});								
+		$("#EditInputDialog").dialog({autoOpen: false,modal: true,resizable: true, width: 600, height:"auto", buttons:{"OK": function(){closeEditPlanInputDialog();}}});		
 	});
 	
 	var checkCallbackStatusUrl = "";
@@ -101,8 +101,14 @@
 			if(soapBodyRootElement.childNodes.item(i).nodeType != 1){
 				continue;
 			}
-			
+								
 			var soapBodyElement = soapBodyRootElement.childNodes.item(i);
+			
+			var inputValue = soapBodyElement.textContent;
+			// if planinput value starts with '#' -> input will be given by vinothek itself
+			if(soapBodyElement.textContent.indexOf("%") == 0){
+				continue;
+			}
 			
 			var heading = document.createElement("h3");
 			heading.textContent = soapBodyElement.localName;
@@ -110,15 +116,9 @@
 			var textArea = document.createElement("textArea");
 			textArea.textContent = soapBodyElement.textContent;
 			
-			// TODO maybe move this to some css class
-			$(textArea).css("min-height","50px");
-			$(textArea).css("width","100%");			
-			$(textArea).css("background-color","white");
-			$(textArea).css("margin","0");
-			$(textArea).css("border","0");
-			$(textArea).css("border-sizing","border-box");
-			
-			// appendto inputdialog content
+			$(textArea).addClass("EditInputDialogTextArea");			
+						
+			// append to inputdialog content
 			editInputDialogContent.appendChild(heading);
 			editInputDialogContent.appendChild(textArea);
 		}
