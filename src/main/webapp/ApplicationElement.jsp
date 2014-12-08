@@ -13,7 +13,6 @@
 		
 		String applicationId = request.getParameter("applicationId");
 		ApplicationWrapper app = client.getApplication(applicationId);
-		
 %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -24,26 +23,20 @@
 <script src="jquery-1.8.2.min.js"></script>
 <link type="text/css" href="jquery-ui.css" rel="stylesheet">
 <script type="text/javascript" src="jquery-ui.min.js"></script>
-<link type="text/css" rel="stylesheet" href="lib/codemirror/codemirror.css">
+<link type="text/css" rel="stylesheet"
+	href="lib/codemirror/codemirror.css">
 <script type="text/javascript" src="lib/codemirror/codemirror.js"></script>
 <script src="lib/codemirror/xml/xml.js"></script>
 
 <script>
-	// var of codemirror editor
-	var editor = null;
+	// needed for some parsings from string to dom and the other way
+	var parser = new DOMParser();
 
 	$(function(){
 		// init option dialog and option list
 		$("#OptionList").selectable({filter: "tr",selected : setOptionButton });
 		$("#OptionDialog").dialog({autoOpen: false,modal: true,resizable: true, width: "auto", height:600, maxWidth: 600, maxHeight: 600});
-		$("#EditInputDialog").dialog({autoOpen: false,modal: true,resizable: true, width: 600, height:"auto", buttons:{"OK": function(){closeEditPlanInputDialog();}}});		
-		
-		// init codemirror
-		var editorArea = $("#EditInputDialogContent")[0];		
-		editor = CodeMirror.fromTextArea(editorArea, {			 
-			  mode:  "xml"			  
-			});		
-		
+		$("#EditInputDialog").dialog({autoOpen: false,modal: true,resizable: true, width: 600, height:"auto", buttons:{"OK": function(){closeEditPlanInputDialog();}}});								
 	});
 	
 	var checkCallbackStatusUrl = "";
@@ -54,8 +47,7 @@
 		if(!inputMessageHasMissingFields()){
 		
 			var applicationId = "<%=applicationId%>";
-			var containerHost = "<%=client.getContainerHost()%>";
-			//var optionId = $("select#optionComboBox :selected").attr("id");
+			var containerHost = "<%=client.getContainerHost()%>";			
 			var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
 			var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
 			var requestBody = optionInputMessageElement.textContent;
@@ -80,35 +72,101 @@
 	}
 	
 	function openEditPlanInputDialog(){
+		var editInputDialogContent = $("#EditInputDialogContent")[0];
 		// fetch selected option, it's input message and the orion editor element
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
 		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
-		var optionInputMessageValue = optionInputMessageElement.textContent;
+		var optionInputMessageValue = optionInputMessageElement.textContent;		
 		
-		// format
-		optionInputMessageValue = formatXml(optionInputMessageValue);
+		// reset planinput dialog content
+		// while there are child nodes remove always the first
+		$(editInputDialogContent).accordion("destroy");
+		$(editInputDialogContent).empty();
+				
+		var doc = parser.parseFromString(optionInputMessageValue, "text/xml");
 		
-		editor.setValue(optionInputMessageValue);
+		var soapEnv = doc.firstChild;
 		
-		// reindent etc.
-		var lineCount = editor.lineCount();		
-		for(var i = 0 ; i < lineCount; i++){
-			editor.indentLine(i);
+		var soapBody = null;
+		
+		for(var i = 0; i < soapEnv.childNodes.length; i++){
+			if(soapEnv.childNodes.item(i).localName == "Body"){
+		 		soapBody = soapEnv.childNodes.item(i);
+			}
 		}
 		
-		editor.save();		
-				
-		$("#EditInputDialog").dialog("open");
-		editor.refresh();
+		var soapBodyRootElement = soapBody.firstElementChild;
+		
+		for(var i = 0; i < soapBodyRootElement.childNodes.length; i++){
+			if(soapBodyRootElement.childNodes.item(i).nodeType != 1){
+				continue;
+			}
+			
+			var soapBodyElement = soapBodyRootElement.childNodes.item(i);
+			
+			var heading = document.createElement("h3");
+			heading.textContent = soapBodyElement.localName;
+					
+			var textArea = document.createElement("textArea");
+			textArea.textContent = soapBodyElement.textContent;
+			
+			// TODO maybe move this to some css class
+			$(textArea).css("min-height","50px");
+			$(textArea).css("width","100%");			
+			$(textArea).css("background-color","white");
+			$(textArea).css("margin","0");
+			$(textArea).css("border","0");
+			$(textArea).css("border-sizing","border-box");
+			
+			// appendto inputdialog content
+			editInputDialogContent.appendChild(heading);
+			editInputDialogContent.appendChild(textArea);
+		}
+			
+		$(editInputDialogContent).accordion();
+		$(editInputDialogContent).accordion("refresh");
+		
+		$("#EditInputDialog").dialog("open");		
 	}
 	
 	function closeEditPlanInputDialog(){
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
 		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
-		var editorContents = editor.getValue();
+		//var editorContents = editor.getValue();
+		var doc = parser.parseFromString(optionInputMessageElement.textContent, "text/xml");
+		var soapEnv = doc.firstChild;
+		var soapBody = null;
 		
+		for(var i = 0; i < soapEnv.childNodes.length; i++){
+			if(soapEnv.childNodes.item(i).localName == "Body"){
+		 		soapBody = soapEnv.childNodes.item(i);
+			}
+		}
+		
+		var soapBodyRootElement = soapBody.firstElementChild;
+		
+		// get the values from dialog content
+		var editInputDialogContent = $("#EditInputDialogContent")[0];
+		
+		var childNodes = editInputDialogContent.childNodes;
+		
+		var counter = 0;
+		while(counter < childNodes.length){		
+			var child = childNodes.item(counter);
+			var soapLocalName = child.textContent;
+			var soapValue = $(child.nextSibling).val();
+			
+			for(var i = 0; i < soapBodyRootElement.childNodes.length; i++){
+				if(soapBodyRootElement.childNodes.item(i).localName == soapLocalName){
+					soapBodyRootElement.childNodes.item(i).textContent = soapValue;
+				}
+			}
+			
+			counter += 2;
+		}
+
 		// save input temporarily
-		optionInputMessageElement.textContent = editorContents;
+		optionInputMessageElement.textContent = (new XMLSerializer()).serializeToString(doc);
 		
 		$("#EditInputDialog").dialog("close");
 	}
@@ -150,7 +208,7 @@
 			$("#applicationUrlContainer #SelfserviceMessage").text(planResult.selfserviceMessage);
 		}
 		if("<%=CallbackEndpointServlet.NO_SELFSERVICE_POLICY_MESSAGE%>" != planResult.selfservicePolicyMessage) {
-			setTimeout(function(){
+			setTimeout(function() {
 				alert(planResult.selfservicePolicyMessage);
 			}, 500);
 		}
@@ -166,7 +224,16 @@
 	}
 
 	function startApplication() {
-		window.open(planResult.applicationUrl);
+
+		var url = planResult.applicationUrl;
+		
+		// check if the url contains some kind of protocol
+		if(url.indexOf("://") == -1){
+			// here we assume that the url doesn't have a protocol assigned at the beginnning -> add http://
+			url = "http://" + url;
+		}
+			
+		window.open(url, "_blank");		
 	}
 
 	function openOptionDialog() {
@@ -198,40 +265,39 @@
 		optionButtonText.textContent = optionName;
 
 		// Close Dialog
-		$("#OptionDialog").dialog("close");		
+		$("#OptionDialog").dialog("close");
 	}
-	
+
 	function formatXml(xml) {
 		var formatted = '';
 		var reg = /(>)(<)(\/*)/g;
 		xml = xml.replace(reg, '$1\r\n$2$3');
 		var pad = 0;
 		jQuery.each(xml.split('\r\n'), function(index, node) {
-		var indent = 0;
-		if (node.match( /.+<\/\w[^>]*>$/ )) {
-		indent = 0;
-		} else if (node.match( /^<\/\w/ )) {
-		if (pad != 0) {
-		pad -= 1;
-		}
-		} else if (node.match( /^<\w[^>]*[^\/]>.*$/ )) {
-		indent = 1;
-		} else {
-		indent = 0;
-		}
-		 
-		var padding = '';
-		for (var i = 0; i < pad; i++) {
-		padding += ' ';
-		}
-		 
-		formatted += padding + node + '\r\n';
-		pad += indent;
+			var indent = 0;
+			if (node.match(/.+<\/\w[^>]*>$/)) {
+				indent = 0;
+			} else if (node.match(/^<\/\w/)) {
+				if (pad != 0) {
+					pad -= 1;
+				}
+			} else if (node.match(/^<\w[^>]*[^\/]>.*$/)) {
+				indent = 1;
+			} else {
+				indent = 0;
+			}
+
+			var padding = '';
+			for (var i = 0; i < pad; i++) {
+				padding += ' ';
+			}
+
+			formatted += padding + node + '\r\n';
+			pad += indent;
 		});
-		 
+
 		return formatted;
-	} 
-	
+	}
 </script>
 
 </head>
@@ -302,9 +368,7 @@ div.appIconRowContainer#row1>span.mirror {
 						<%
 							if (app.getOptions().getOption().get(0).getName().length() > 11) {
 						%>
-						<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()
-							.substring(0, 11)
-							+ ".."%>
+						<span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName().substring(0, 11) + ".."%>
 							<%
 								} else {
 							%> <span id="SelectOptionButtonText"> <%=app.getOptions().getOption().get(0).getName()%>
@@ -317,8 +381,8 @@ div.appIconRowContainer#row1>span.mirror {
 				</a>
 			</div>
 
-			<a href="javascript:startInstance();" id="StartInstanceButton"></a> 
-			<a href="javascript:openEditPlanInputDialog();" id="EditInputButton">
+			<a href="javascript:startInstance();" id="StartInstanceButton"></a> <a
+				href="javascript:openEditPlanInputDialog();" id="EditInputButton">
 				<span id="EditInputButtonText">Edit Parameters</span>
 			</a>
 
@@ -334,7 +398,8 @@ div.appIconRowContainer#row1>span.mirror {
 						<td id="OptionListItem">
 							<p id="OptionListName"><%=o.getName()%></p>
 							<p id="OptionListText"><%=o.getDescription()%></p>
-							<div id="OptionListInput" style="display: none;" optionId="<%=o.getId()%>"><%=StringEscapeUtils.escapeHtml4(client.get(app, o.getPlanInputMessageUrl()))%></div>
+							<div id="OptionListInput" style="display: none;"
+								optionId="<%=o.getId()%>"><%=StringEscapeUtils.escapeHtml4(client.get(app, o.getPlanInputMessageUrl()))%></div>
 						</td>
 					</tr>
 					<%
@@ -343,8 +408,9 @@ div.appIconRowContainer#row1>span.mirror {
 				</table>
 			</div>
 
-			<div id="EditInputDialog" title="Please fill in the unspecified fields">			
-				<textarea id="EditInputDialogContent" style="width:100%;height:auto"></textarea>	
+			<div id="EditInputDialog"
+				title="Please fill in the unspecified fields">
+				<div id="EditInputDialogContent" style="width: 100%; height: auto"></div>
 			</div>
 
 		</div>
