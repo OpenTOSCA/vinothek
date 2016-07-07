@@ -27,17 +27,35 @@ public class VinothekContainerClient {
 	private final String containerHost;
 	private final int containerPort;
 	private final Client jerseyClient;
-
-	public VinothekContainerClient(HttpServletRequest req) {
-		String containerTmp = req.getParameter("container");
+	
+	public VinothekContainerClient(String containerUrl){
+		String containerTmp = containerUrl;
 		
+		containerTmp = containerTmp.replaceAll("http://", "").trim();
+		if (containerTmp.contains(":")) {
+			
+			this.containerHost = this.fetchContainerHost(containerTmp);
+			this.containerPort = this.fetchContainerPort(containerTmp);
+		} else {
+			this.containerHost = containerTmp;
+			this.containerPort = CONFIG.DEFAULT_CONTAINER_PORT;
+		}
+
+		// Create Jersey Client
+		ClientConfig config = new DefaultClientConfig();
+		this.jerseyClient = Client.create(config);
+	}
+
+	public VinothekContainerClient(HttpServletRequest req) {		
+		String containerTmp = req.getParameter("container");
+
 		// Use localhost if container parameter is not set
 		if (containerTmp == null) {
 			// We cannot just set 'localhost', because when connection from the
 			// browser to a remote server localhost is the actual hostname of
 			// the server.
 			String self = req.getRequestURL().toString();
-			
+
 			try {
 				URL url = new URL(self);
 				containerTmp = url.getHost();
@@ -48,12 +66,9 @@ public class VinothekContainerClient {
 		}
 		containerTmp = containerTmp.replaceAll("http://", "").trim();
 		if (containerTmp.contains(":")) {
-			String[] split = containerTmp.split(":");
-			if (split.length != 2) {
-				throw new RuntimeException("Invalid Syntax of container parameter (" + containerTmp + ").");
-			}
-			this.containerHost = split[0];
-			this.containerPort = Integer.parseInt(split[1]);
+			
+			this.containerHost = this.fetchContainerHost(containerTmp);
+			this.containerPort = this.fetchContainerPort(containerTmp);
 		} else {
 			this.containerHost = containerTmp;
 			this.containerPort = CONFIG.DEFAULT_CONTAINER_PORT;
@@ -62,6 +77,22 @@ public class VinothekContainerClient {
 		// Create Jersey Client
 		ClientConfig config = new DefaultClientConfig();
 		this.jerseyClient = Client.create(config);
+	}
+	
+	private String fetchContainerHost(String containerUrl){
+		String[] split = containerUrl.split(":");
+		if (split.length != 2) {
+			throw new RuntimeException("Invalid Syntax of container parameter (" + containerUrl + ").");
+		}
+		return split[0];
+	}
+	
+	private int fetchContainerPort(String containerUrl){
+		String[] split = containerUrl.split(":");
+		if (split.length != 2) {
+			throw new RuntimeException("Invalid Syntax of container parameter (" + containerUrl + ").");
+		}
+		return Integer.valueOf(split[1]);
 	}
 
 	/**
@@ -80,46 +111,46 @@ public class VinothekContainerClient {
 	public Map<String, ApplicationWrapper> getApplications() {
 		Map<String, ApplicationWrapper> apps = new HashMap<String, ApplicationWrapper>();
 		String csarUrl = getContainerUrl() + CONFIG.CSAR_LIST_REL_URL;
-		
+
 		try {
 			String ret = this.jerseyClient.resource(csarUrl).accept(MediaType.MEDIA_TYPE_WILDCARD).get(String.class);
-			
+
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-	        DocumentBuilder builder = factory.newDocumentBuilder();
-	        Document parse = builder.parse(new InputSource(new StringReader(ret)));
-	        NodeList elementsByTagName = parse.getElementsByTagName("Reference");
-	        
-	        for (int i=0; i<elementsByTagName.getLength(); i++) {
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			Document parse = builder.parse(new InputSource(new StringReader(ret)));
+			NodeList elementsByTagName = parse.getElementsByTagName("Reference");
+
+			for (int i = 0; i < elementsByTagName.getLength(); i++) {
 				Node item = elementsByTagName.item(i);
 				String csarBaseUrl = item.getAttributes().getNamedItem("xlink:href").getNodeValue();
 				// "self" is no application
-				if(item.getAttributes().getNamedItem("xlink:title").getNodeValue().equals("Self")) {
+				if (item.getAttributes().getNamedItem("xlink:title").getNodeValue().equals("Self")) {
 					continue;
 				}
-				
+
 				// Create Self Service Base Url
 				String selfServiceBaseUrl = csarBaseUrl + CONFIG.METADATA_FOLDER;
 				String data = get(selfServiceBaseUrl + CONFIG.METADATA_FILE);
-				if(data == null || data.isEmpty()) {
+				if (data == null || data.isEmpty()) {
 					continue;
 				}
-				
+
 				// Create Application
 				ApplicationWrapper application = ApplicationUnmarshaller.unmarshall(data);
 				application.setSelfServiceBaseUrl(selfServiceBaseUrl);
 				apps.put(selfServiceBaseUrl, application);
 			}
-	        
+
 		} catch (com.sun.jersey.api.client.ClientHandlerException e) {
-			if(e.getCause() != null && e.getCause() instanceof java.net.ConnectException) {
+			if (e.getCause() != null && e.getCause() instanceof java.net.ConnectException) {
 				throw new CannotConnectToContainerException(getContainerUrl(), e.getCause());
 			} else {
 				throw new RuntimeException("Failed to get applications from " + csarUrl, e);
 			}
-			
+
 		} catch (com.sun.jersey.api.client.UniformInterfaceException e) {
 			throw new CannotConnectToContainerException(csarUrl, (e.getCause() != null) ? e.getCause() : e);
-        
+
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to get applications from " + csarUrl, e);
 		}
@@ -130,12 +161,11 @@ public class VinothekContainerClient {
 	public ApplicationWrapper getApplication(String applicationId) {
 		return getApplications().get(applicationId);
 	}
-	
+
 	private String get(String url) {
 		System.out.println("Getting file: " + url);
 		try {
-			String ret = this.jerseyClient.resource(url)
-					.accept(MediaType.APPLICATION_OCTET_STREAM).get(String.class);
+			String ret = this.jerseyClient.resource(url).accept(MediaType.APPLICATION_OCTET_STREAM).get(String.class);
 			// System.out.println(" ^ " + ret);
 			return ret;
 		} catch (Throwable e) {
@@ -146,6 +176,6 @@ public class VinothekContainerClient {
 
 	public String get(ApplicationWrapper application, String url) {
 		return get(application.convertToAbsoluteUrl(url));
-	}		
+	}
 
 }
