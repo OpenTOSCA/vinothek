@@ -112,8 +112,15 @@
 			
 			var heading = document.createElement("h3");
 			heading.textContent = soapBodyElement.localName;
-					
-			var textArea = document.createElement("textArea");
+
+			var textArea = null;
+			
+			if(soapBodyElement.localName.includes("Password") | soapBodyElement.localName.includes("password")){
+				textArea = document.createElement("input");
+				textArea.setAttribute("type", "password");
+			}else {
+				textArea = document.createElement("textArea");
+			}
 			textArea.textContent = soapBodyElement.textContent;
 			
 			$(textArea).addClass("EditInputDialogTextArea");			
