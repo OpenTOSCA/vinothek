@@ -14,6 +14,17 @@ public class CallbackManager {
 	}
 
 	public static void addInstance(ApplicationInstance i) {
+		List<Integer> toRemove = new ArrayList<Integer>();
+		for(int index = 0 ; index < instanceStore.size() ; index++){
+			if(instanceStore.get(index).getCallbackId().equals(i.getCallbackId())){
+				toRemove.add(index);
+			}
+		}
+		
+		for(int index : toRemove){
+			instanceStore.remove(index);
+		}
+		
 		instanceStore.add(0, i);
 	}
 	

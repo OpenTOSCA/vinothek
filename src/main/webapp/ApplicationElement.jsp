@@ -10,7 +10,7 @@
 <%
 	try {
 		VinothekContainerClient client = new VinothekContainerClient(request);
-		
+
 		String applicationId = request.getParameter("applicationId");
 		ApplicationWrapper app = client.getApplication(applicationId);
 %>
@@ -41,6 +41,7 @@
 	
 	var checkCallbackStatusUrl = "";
 	var planResult = {};
+	var instantiated = false;
 	
 	function startInstance() {
 		
@@ -64,11 +65,41 @@
 				});
 			
 			$("#actionContainer").fadeOut("slow");
-			$("#loadingContainer").fadeIn("slow");
+			showInstantiatingLoadingContainer();
 			startWaitingForPlanResult();
 		} else {
 			alert("Application needs propery input data, please fill in the missing fields");
 		}
+	}
+	
+	function showInstantiatingLoadingContainer(){
+		var spanElement = $("#loadingContainer").find("span");
+		$("#loadingContainer").find("span")[0].textContent = "Instantiating Application... Please wait";
+		$("#loadingContainer").fadeIn("slow");
+	}
+	
+	function showTerminatingLoadingContainer(){
+		$("#loadingContainer").find("span")[0].textContent = "Terminating Application... Please wait";
+		$("#loadingContainer").fadeIn("slow");
+	}
+	
+	function terminateInstance(){
+		var applicationId = "<%=applicationId%>";
+		var containerHost = "<%=client.getContainerHost()%>";
+		 
+		var terminateTriggeringUrl = "ApplicationTermination?container=" + containerHost + "&applicationId=" + applicationId + "&serviceInstance=" + planResult.selfserviceServiceInstance;
+		
+		$.ajax({
+			url: terminateTriggeringUrl,
+			data: {xml: null},
+			success: function(data) {
+				checkCallbackStatusUrl = data;								
+			},
+			dataType: "text"
+			});
+		$("#applicationUrlContainer").fadeOut("slow");
+		showTerminatingLoadingContainer();
+		startWaitingForPlanResult();
 	}
 	
 	function openEditPlanInputDialog(){
@@ -200,14 +231,29 @@
 						startWaitingForPlanResult();
 								} else {
 									planResult = data;
-									updateUiWithPlanResultMessages();
+									if(!instantiated){
+										instantiated = true;
+										updateUiWithPlanResultMessages();
+										$("#loadingContainer").fadeOut("slow");
+										$("#applicationUrlContainer").fadeIn("slow");
+									}else{
+										instantiated = false;
+										resetUi();
+										$("#loadingContainer").fadeOut("slow");
+										$("#actionContainer").fadeIn("slow");
+									}
 
-									$("#loadingContainer").fadeOut("slow");
-									$("#applicationUrlContainer").fadeIn("slow");
 								}
 							}, "json");
 
 		}, 3000);
+	}
+	
+	function resetUi(){
+			$("#successSymbol").hide();
+			$("#failedSymbol").hide();
+			$("#playSymbol").hide();
+			$("#terminateSymbol").hide();
 	}
 	
 	function updateUiWithPlanResultMessages() {
@@ -215,32 +261,37 @@
 			$("#applicationUrlContainer #SelfserviceMessage").text(planResult.selfserviceMessage);
 		}
 		if("<%=CallbackEndpointServlet.NO_SELFSERVICE_POLICY_MESSAGE%>" != planResult.selfservicePolicyMessage) {
-			setTimeout(function() {
-				alert(planResult.selfservicePolicyMessage);
-			}, 500);
-		}
-		if ("OK" == planResult.selfserviceStatus) {
-			$("#successSymbol").show();
-		}
-		if ("FAILED" == planResult.selfserviceStatus) {
-			$("#failedSymbol").show();
-		}
-		if ("" != planResult.applicationUrl) {
-			$("#playSymbol").show();
-		}
+				setTimeout(function() {
+					alert(planResult.selfservicePolicyMessage);
+				}, 500);
+			}
+			if ("OK" == planResult.selfserviceStatus) {
+				$("#successSymbol").show();
+			}
+			if ("FAILED" == planResult.selfserviceStatus) {
+				$("#failedSymbol").show();
+			}
+			if ("" != planResult.applicationUrl) {
+				$("#playSymbol").show();
+			}
+
+			if ("" != planResult.selfserviceServiceInstance) {
+				$("#terminateSymbol").show();
+			}
+		
 	}
 
 	function startApplication() {
 
 		var url = planResult.applicationUrl;
-		
+
 		// check if the url contains some kind of protocol
-		if(url.indexOf("://") == -1){
+		if (url.indexOf("://") == -1) {
 			// here we assume that the url doesn't have a protocol assigned at the beginnning -> add http://
 			url = "http://" + url;
 		}
-			
-		window.open(url, "_blank");		
+
+		window.open(url, "_blank");
 	}
 
 	function openOptionDialog() {
@@ -432,10 +483,15 @@ div.appIconRowContainer#row1>span.mirror {
 				id="playSymbol" style="border: 0px; display: none;" height="59px"
 				src="images/playbutton.png"></a> <img id="failedSymbol"
 				style="border: 0px; display: none;" height="59px"
-				src="images/failSymbol.png" /> <img id="successSymbol"
+				src="images/failSymbol2.png" /> <img id="successSymbol"
 				style="border: 0px; display: none;" height="59px"
-				src="images/successSymbol.png" /> <br> <span
-				id="SelfserviceMessage">Provisioning finished.</span>
+				src="images/successSymbol.png" /> <a id="terminateButton"
+				href="javascript:terminateInstance();"> <img
+				id="terminateSymbol" height="59px" src="images/failSymbol.png"
+				style="border: 0px; display: none;" />
+			</a> <br> <span id="SelfserviceMessage">Provisioning
+				finished.</span>
+
 			<!-- <span id="SelfservicePolicyMessage"></span> -->
 		</div>
 </body>

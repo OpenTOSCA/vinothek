@@ -19,7 +19,8 @@ public class WellknownPlanInputMessageParams {
 	public static final String IN_INSTANCE_ENTRYPOINT = "instanceEntrypoint";
 
 	/**
-	 * Service instance this management or termination plans is executed on.<br/>
+	 * Service instance this management or termination plans is executed
+	 * on.<br/>
 	 * Example: 56346347546754
 	 */
 	public static final String IN_INSTANCE_ID = "instanceId";
@@ -67,7 +68,7 @@ public class WellknownPlanInputMessageParams {
 	 * But only if status is OK
 	 */
 	public static final String OUT_SELFSERVICE_APPLICATIONURL = "selfserviceApplicationUrl";
-	
+
 	/**
 	 * User friendly result message to show in the UI,<br/>
 	 * otherwise only OK or FAILED is displayed
@@ -88,4 +89,7 @@ public class WellknownPlanInputMessageParams {
 	 * The format is up to the container.
 	 */
 	public static final String OUT_INSTANCE_ID = "instanceId";
+
+	
+
 }

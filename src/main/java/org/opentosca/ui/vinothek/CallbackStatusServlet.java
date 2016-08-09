@@ -56,6 +56,9 @@ public class CallbackStatusServlet extends HttpServlet {
 			response.getWriter().append("\"selfservicePolicyMessage\":\"");
 			response.getWriter().append(instance.getSelfservicePolicyMessage());
 			response.getWriter().append("\",");
+			response.getWriter().append("\"selfserviceServiceInstance\":\"");
+			response.getWriter().append(instance.getSelfserviceServiceInstance());
+			response.getWriter().append("\",");			
 			response.getWriter().append("\"selfserviceStatus\":\"");
 			response.getWriter().append(instance.getSelfserviceStatus());
 			response.getWriter().append("\"}");

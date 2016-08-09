@@ -12,6 +12,7 @@ public class ApplicationInstance {
 	private String selfservicePolicyMessage = null;
 	private String selfserviceStatus = null;
 	private String message = null;
+	private String selfserviceServiceInstance = null;
 
 	public ApplicationInstance(String applicationId, String container) {
 		this.applicationId = applicationId;
@@ -71,5 +72,12 @@ public class ApplicationInstance {
 		this.selfserviceStatus = selfserviceStatus;
 	}
 
+	public void setSelfserviceServiceInstance(String selfserviceServiceInstance) {
+		this.selfserviceServiceInstance = selfserviceServiceInstance;
+	}
+
+	public String getSelfserviceServiceInstance() {
+		return this.selfserviceServiceInstance;
+	}
 
 }
