@@ -11,7 +11,7 @@
 
 	<a href="ApplicationElement.jsp?applicationId=<%=applicationId%>&container=<%=client.getContainerHost()%>">
 		<div id="<%=applicationId%>" class="appIconContainer">
-			<img src="<%=app.convertToAbsoluteUrl(app.getIconUrl())%>">
+			<!-- <img src="<%=app.convertToAbsoluteUrl(app.getIconUrl())%>"> -->
 			<div class="appIconContainerForeground"></div>							
 		</div>
 	</a>

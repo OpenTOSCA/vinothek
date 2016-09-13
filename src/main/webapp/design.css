@@ -30,7 +30,7 @@ div.appIconRowContainer#row1 {
 div.appIconContainer {
 	width: 156px;
 	height: 201px;
-	background: url('images/AppIconBackground.png');
+	background: url('images/AppIconBackground2.png');
 	float: left;
 	position: relative;
 }
@@ -44,7 +44,7 @@ div.appIconContainer  img {
 div.appIconContainerForeground {
 	width: 156px;
 	height: 206px;
-	background: url('images/AppIconForeground.png');
+	background: url('images/AppIconForeground2.png');
 	position: absolute;
 	top: 0px;
 	left: 0px;
