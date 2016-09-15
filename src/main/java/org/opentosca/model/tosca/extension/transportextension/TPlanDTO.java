@@ -50,14 +50,15 @@ public class TPlanDTO {
 		if (null != plan.getInputParameters()) {
 			inputParameters = new InputParameters();
 			for (TParameter param : plan.getInputParameters().getInputParameter()) {
-				inputParameters.inputParameter.add(new TParameterDTO(param));
+				TParameterDTO dto = new TParameterDTO(param);
+				inputParameters.getInputParameter().add(dto);
 			}
 		}
 		
 		if (null != plan.getOutputParameters()) {
 			outputParameters = new OutputParameters();
 			for (TParameter param : plan.getOutputParameters().getOutputParameter()) {
-				outputParameters.outputParameter.add(new TParameterDTO(param));
+				outputParameters.getOutputParameter().add(new TParameterDTO(param));
 			}
 		}
 	}

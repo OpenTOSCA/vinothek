@@ -23,6 +23,7 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.struts2.ServletActionContext;
 import org.opentosca.model.tosca.TPlan;
+import org.opentosca.model.tosca.extension.transportextension.TParameterDTO;
 import org.opentosca.model.tosca.extension.transportextension.TPlanDTO;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
@@ -54,6 +55,11 @@ import com.sun.jersey.multipart.FormDataMultiPart;
  */
 public class ContainerClient {
 	
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4221259341944728001L;
 	
 	public static URI BASEURI;
 	private Client client;
@@ -231,7 +237,7 @@ public class ContainerClient {
 	 * @param URI as String
 	 * @return WebResource
 	 */
-	private WebResource getGenericService(String uri) {
+	public WebResource getGenericService(String uri) {
 		
 		return client.resource(uri);
 	}
@@ -369,6 +375,48 @@ public class ContainerClient {
 							System.out.println("Try to get plan from " + src.getURI());
 							
 							plans.add("\"" + plan + "\":$.parseXML(" + src.accept(MediaType.APPLICATION_XML).get(String.class).replace("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>", "") + ");");
+						}
+					}
+				}
+			}
+		}
+		if (plans.size() < 1) {
+			System.out.println("Did not find a plan!");
+		} else {
+			System.out.println("Found Plans: ");
+			for (String dto : plans) {
+				System.out.println("   " + dto);
+			}
+		}
+		return plans;
+	}
+	
+	public List<String> getMinimalPlanAsXML(String csarID) {
+		
+		List<String> plans = new ArrayList<String>();
+		
+		WebResource src;
+		for (String[] intfName : getLinksWithExtension("CSARs/" + csarID + "/BoundaryDefinitions/Interfaces", false)) {
+			
+			for (String[] opName : getLinksWithExtension("CSARs/" + csarID + "/BoundaryDefinitions/Interfaces/" + intfName[0] + "/Operations", false)) {
+				
+				for (String[] planName : getLinksWithExtension("CSARs/" + csarID + "/BoundaryDefinitions/Interfaces/" + intfName[0] + "/Operations/" + opName[0] + "/Plan/", false)) {
+					
+					String plan = null;
+					for (int itr = 0; itr < planName.length; itr++) {
+						if (!planName[itr].equalsIgnoreCase("self") && !planName[itr].equalsIgnoreCase("PlanWithMinimalInput") && !planName[itr].startsWith("http")) {
+							// System.out.println(planName[itr]);
+							plan = planName[itr];
+							System.out.println("Take plan " + plan);
+							
+							src = getBaseService().path("CSARs").path(csarID).path("BoundaryDefinitions").path("Interfaces").path(intfName[0]).path("Operations").path(opName[0]).path("Plan").path(plan).path("PlanWithMinimalInput");
+							
+							System.out.println("Try to get plan from " + src.getURI());
+							
+							plans.add(// "\"" + plan + "\":" +
+									src.accept(MediaType.APPLICATION_XML).get(String.class).replace("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>", "")
+									// + ";"
+									);
 						}
 					}
 				}
@@ -673,6 +721,148 @@ public class ContainerClient {
 		
 		return resp;
 		
+	}
+	
+	public String postXMLPlanToURL(String url, String plan) {
+		
+		System.out.println("post public plan " + plan + " to URL " + url);
+		
+		ClientResponse resp = null;
+		
+		resp = client.resource(url).type(MediaType.APPLICATION_XML).post(ClientResponse.class, plan);
+		
+		try {
+			
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			Document doc;
+			XPathFactory xPathfactory = XPathFactory.newInstance();
+			XPath xpath = xPathfactory.newXPath();
+			XPathExpression expr;
+			
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			doc = builder.parse(resp.getEntityInputStream());
+			expr = xpath.compile("//Reference/@*[local-name()='href']"); // title
+			NodeList nodes = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
+			
+			for (int itr = 0; itr < nodes.getLength(); itr++) {
+				String str = nodes.item(itr).getTextContent();
+				if (!str.equalsIgnoreCase("self")) {
+					System.out.println(str);
+					return str;
+				}
+			}
+			
+		} catch (XPathExpressionException | ParserConfigurationException
+				| SAXException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return "";
+	}
+	
+	public String postTerminationPlan(String csarID, String serviceID) {
+		List<String> xmls = getMinimalPlanAsXML(csarID);
+		
+		System.out.println();
+		System.out.println();
+		System.out.println();
+		for (TPlan plan : getPlanDTOs(csarID)) {
+			if (plan.getPlanType().contains("http://docs.oasis-open.org/tosca/ns/2011/12/PlanTypes/TerminationPlan")) {
+				System.out.println("taking " + plan.getId() + " for termination");
+				TPlanDTO dto = new TPlanDTO(plan, "");
+				for (TParameterDTO para : dto.getInputParameters().getInputParameter()) {
+					// System.out.println("para: " + para.getName());
+					if (para.getName().equals("selfserviceServiceInstance")) {
+						para.setValue(serviceID);
+						
+						System.out.println("selfserviceServiceInstance set, now search for URLS");
+						for (String str : getPOSTURLsOfPlans(csarID)) {
+							System.out.println(str);
+							if (str.startsWith("\"" + plan.getId() + "\"")) {
+								String url = str.substring(plan.getId().length() + 4, str.length() - 1);
+								System.out.println("post termination to URL: " + url);
+								
+								ClientResponse resp = client.resource(url).type(MediaType.APPLICATION_XML).post(ClientResponse.class, dto);
+								return resp.getEntity(String.class);
+							}
+						}
+					}
+				}
+			}
+		}
+		// getPOSTURLsOfPlans(csarID)
+		System.out.println();
+		
+		// for (String xml : xmls) {
+		// System.out.println("trying:\n" + xml);
+		// if
+		// (xml.contains("\"http://docs.oasis-open.org/tosca/ns/2011/12/PlanTypes/TerminationPlan\""))
+		// {
+		// DocumentBuilder db;
+		// try {
+		//
+		// System.out.println("taking termination plan:\n" + xml);
+		//
+		// db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+		// InputSource is = new InputSource();
+		// is.setCharacterStream(new StringReader(xml));
+		//
+		// Document doc = db.parse(is);
+		// // NodeList nodes = doc.getElementsByTagNameNS("*",
+		// // "InputParameter");
+		//
+		// NodeList planChilds = doc.getFirstChild().getChildNodes();
+		//
+		// for (int itr = 0; itr < planChilds.getLength(); itr++) {
+		// System.out.println("planChilds " +
+		// planChilds.item(itr).getNodeName());
+		// if
+		// (planChilds.item(itr).getNodeName().equalsIgnoreCase("InputParameters"))
+		// {
+		//
+		// NodeList inputParams = planChilds.item(itr).getChildNodes();
+		// for (int itr2 = 0; itr < inputParams.getLength(); itr++) {
+		//
+		// System.out.println(itr2 + ": Found node " +
+		// inputParams.item(itr2).getAttributes().getNamedItem("name").getTextContent());//
+		// getAttributes().getNamedItem("name").getTextContent());
+		// // nodes.item(itr).setTextContent(serviceID);
+		// // postXMLPlanToURL(url, plan);
+		// }
+		//
+		// }
+		// }
+		//
+		// // for (String url : getPOSTURLsOfPlans(csarID)) {
+		// // JsonParser parser = new JsonParser();
+		// // JsonObject json = parser.parse("{" + url +
+		// // "}").getAsJsonObject();
+		// //
+		// // for (Map.Entry<String, JsonElement> entry :
+		// // json.entrySet()) {
+		// // if (entry.getKey().equals(terminPlan.getId())) {
+		// // return
+		// // postXMLPlanToURL(entry.getValue().getAsString(),
+		// // plan);
+		// // break;
+		// // } else {
+		// // }
+		// // }
+		// //
+		// // }
+		//
+		// } catch (ParserConfigurationException e) {
+		// e.printStackTrace();
+		// } catch (SAXException e) {
+		// e.printStackTrace();
+		// } catch (IOException e) {
+		// e.printStackTrace();
+		// }
+		// }
+		// }
+		
+		return null;
 	}
 	
 	private List<String> getRefsWithoutSelf(ClientResponse resp) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {

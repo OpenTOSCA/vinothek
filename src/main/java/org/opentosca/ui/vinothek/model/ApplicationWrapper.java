@@ -124,7 +124,7 @@ public class ApplicationWrapper extends Application {
 		
 		ContainerClient client = ContainerClient.getInstance();
 		builder.append("{");
-		for (String url: client.getPOSTURLsOfPlans(getCsarName())) {
+		for (String url : client.getPOSTURLsOfPlans(getCsarName())) {
 			if (null != url) {
 				builder.append(url + ",");
 			}
@@ -140,13 +140,48 @@ public class ApplicationWrapper extends Application {
 		
 		ContainerClient client = ContainerClient.getInstance();
 		builder.append("{");
-		for (String plan: client.getPlanDTOsAsXML(getCsarName())) {
+		for (String plan : client.getPlanDTOsAsXML(getCsarName())) {
 			if (null != plan) {
 				builder.append(plan + ",");
 			}
 		}
 		builder.replace(builder.length() - 1, builder.length(), "}");
 		
+		return builder.toString();
+	}
+	
+	public String getPlanXMLArray(String planName) {
+		
+		StringBuilder builder = new StringBuilder();
+		
+		ContainerClient client = ContainerClient.getInstance();
+		builder.append("{");
+		for (String plan : client.getPlanDTOsAsXML(getCsarName())) {
+			if (null != plan && plan.contains("id=\"" + planName + "\"")) {
+				System.out.println("Plan found: " + plan);
+				builder.append(plan + ",");
+			}
+		}
+		builder.replace(builder.length() - 1, builder.length(), "}");
+		
+		return builder.toString();
+	}
+	
+	public String getMinimalPlanXML(String planName) {
+		
+		StringBuilder builder = new StringBuilder();
+		
+		ContainerClient client = ContainerClient.getInstance();
+		//		builder.append("{");
+		for (String plan : client.getMinimalPlanAsXML(getCsarName())) {
+			if (null != plan && plan.contains("id=\"" + planName + "\"")) {
+				System.out.println("Minimal plan found with ID " + planName + "\n" + plan);
+				builder.append(plan);// + ",");
+			}
+		}
+		//		builder.replace(builder.length() - 1, builder.length(), "}");
+		
+		System.out.println(builder.toString());
 		return builder.toString();
 	}
 }

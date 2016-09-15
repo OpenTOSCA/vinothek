@@ -31,6 +31,7 @@
 <script>
 	// needed for some parsings from string to dom and the other way
 	var parser = new DOMParser();
+	var selfserviceServiceInstance;
 
 	$(function(){
 		// init option dialog and option list
@@ -44,22 +45,27 @@
 	var instantiated = false;
 	
 	function startInstance() {
+		console.log("startInstance");
 		
 		if(!inputMessageHasMissingFields()){
 		
 			var applicationId = "<%=applicationId%>";
 			var containerHost = "<%=client.getContainerHost()%>";			
 			var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
-			var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+			var optionInputMessageElement = $("#OptionListInput[optionid=\"" + optionId + "\"]")[0];
 			var requestBody = optionInputMessageElement.textContent;
 		
-			var instantiateTriggeringUrl = "ApplicationInstantiation?container=" + containerHost + "&applicationId=" + applicationId + "&optionId=" + optionId;
+			var instantiateTriggeringUrl = "ApplicationInstantiation";//?container=" + containerHost + "&applicationId=" + applicationId + "&optionId=\"" + optionId + "\"";
 			
-			$.ajax({
+			console.log("url: " + instantiateTriggeringUrl + "\nrequest: " + requestBody);
+			
+			$.ajax({  
+				type: "POST",
 				url: instantiateTriggeringUrl,
-				data: {xml: requestBody},
+				data: {csarID : "<%=app.getCsarName()%>", planID : optionId, xml: requestBody},
 				success: function(data) {
-					checkCallbackStatusUrl = data;								
+					checkCallbackStatusUrl = data;			
+					console.log("instantiate poll url: " + checkCallbackStatusUrl);
 				},
 				dataType: "text"
 				});
@@ -72,93 +78,84 @@
 		}
 	}
 	
+	function terminateInstance(){
+		
+		console.log("terminateInstance: " + selfserviceServiceInstance);
+		var applicationId = "<%=applicationId%>";
+		var containerHost = "<%=client.getContainerHost()%>";
+		 
+		var terminateTriggeringUrl = "ApplicationTermination";//?container=" + containerHost + "&applicationId=" + applicationId + "&serviceInstance=" + planResult.selfserviceServiceInstance;
+		
+		$.ajax({  
+			type: "POST",
+			url: terminateTriggeringUrl,
+			data: {csarID : "<%=app.getCsarName()%>", serviceID : selfserviceServiceInstance},
+			success: function(data) {
+				checkCallbackStatusUrl = data;			
+				console.log("termination poll blah: " + checkCallbackStatusUrl);
+			},
+			dataType: "text"
+			});
+// 		$.ajax({
+// 			url: terminateTriggeringUrl,
+// 			data: {xml: null},
+// 			success: function(data) {
+// 				checkCallbackStatusUrl = data;								
+// 			},
+// 			dataType: "text"
+// 			});
+		$("#applicationUrlContainer").fadeOut("slow");
+		showTerminatingLoadingContainer();
+		startWaitingForPlanResult();
+	}
+	
 	function showInstantiatingLoadingContainer(){
+		console.log("showInstantiatingLoadingContainer");
 		var spanElement = $("#loadingContainer").find("span");
 		$("#loadingContainer").find("span")[0].textContent = "Instantiating Application... Please wait";
 		$("#loadingContainer").fadeIn("slow");
 	}
 	
 	function showTerminatingLoadingContainer(){
+		console.log("showTerminatingLoadingContainer");
 		$("#loadingContainer").find("span")[0].textContent = "Terminating Application... Please wait";
 		$("#loadingContainer").fadeIn("slow");
 	}
 	
-	function terminateInstance(){
-		var applicationId = "<%=applicationId%>";
-		var containerHost = "<%=client.getContainerHost()%>";
-		 
-		var terminateTriggeringUrl = "ApplicationTermination?container=" + containerHost + "&applicationId=" + applicationId + "&serviceInstance=" + planResult.selfserviceServiceInstance;
-		
-		$.ajax({
-			url: terminateTriggeringUrl,
-			data: {xml: null},
-			success: function(data) {
-				checkCallbackStatusUrl = data;								
-			},
-			dataType: "text"
-			});
-		$("#applicationUrlContainer").fadeOut("slow");
-		showTerminatingLoadingContainer();
-		startWaitingForPlanResult();
-	}
-	
 	function openEditPlanInputDialog(){
+		console.log("openEditPlanInputDialog");
 		var editInputDialogContent = $("#EditInputDialogContent")[0];
-		// fetch selected option, it's input message and the orion editor element
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
-		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
-		var optionInputMessageValue = optionInputMessageElement.textContent;		
-		
-		// reset planinput dialog content
-		// while there are child nodes remove always the first
+		var planElement = $("#OptionListInput[optionid=\"" + optionId + "\"]")[0].children[0];
+
+		console.log(optionId);	
 		$(editInputDialogContent).accordion("destroy");
 		$(editInputDialogContent).empty();
-				
-		var doc = parser.parseFromString(optionInputMessageValue, "text/xml");
-		
-		var soapEnv = doc.firstChild;
-		
-		var soapBody = null;
-		
-		for(var i = 0; i < soapEnv.childNodes.length; i++){
-			if(soapEnv.childNodes.item(i).localName == "Body"){
-		 		soapBody = soapEnv.childNodes.item(i);
-			}
-		}
-		
-		var soapBodyRootElement = soapBody.firstElementChild;
-		
-		for(var i = 0; i < soapBodyRootElement.childNodes.length; i++){
-			if(soapBodyRootElement.childNodes.item(i).nodeType != 1){
-				continue;
-			}
-								
-			var soapBodyElement = soapBodyRootElement.childNodes.item(i);
+
+		var params = planElement.childNodes[0];
+		while (params.hasChildNodes()){
 			
-			var inputValue = soapBodyElement.textContent;
-			// if planinput value starts with '#' -> input will be given by vinothek itself
-			if(soapBodyElement.textContent.indexOf("%") == 0){
-				continue;
-			}
-			
+			var paramName = params.childNodes[0].getAttribute("name");
+			console.log(paramName);
 			var heading = document.createElement("h3");
-			heading.textContent = soapBodyElement.localName;
+			heading.textContent = paramName;
 
 			var textArea = null;
 			
-			if(soapBodyElement.localName.includes("Password") | soapBodyElement.localName.includes("password")){
+			if(params.childNodes[0].localName.includes("Password") | params.childNodes[0].localName.includes("password")){
 				textArea = document.createElement("input");
 				textArea.setAttribute("type", "password");
 			}else {
 				textArea = document.createElement("textArea");
 			}
-			textArea.textContent = soapBodyElement.textContent;
+			textArea.textContent = params.childNodes[0].textContent;
 			
 			$(textArea).addClass("EditInputDialogTextArea");			
 						
 			// append to inputdialog content
 			editInputDialogContent.appendChild(heading);
 			editInputDialogContent.appendChild(textArea);
+			params = params.childNodes[0];
 		}
 			
 		$(editInputDialogContent).accordion();
@@ -168,88 +165,100 @@
 	}
 	
 	function closeEditPlanInputDialog(){
+		console.log("closeEditPlanInputDialog");
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
-		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
-		//var editorContents = editor.getValue();
+		var optionInputMessageElement = $("#OptionListInput[optionid=\"" + optionId + "\"]")[0];
 		var doc = parser.parseFromString(optionInputMessageElement.textContent, "text/xml");
-		var soapEnv = doc.firstChild;
-		var soapBody = null;
-		
-		for(var i = 0; i < soapEnv.childNodes.length; i++){
-			if(soapEnv.childNodes.item(i).localName == "Body"){
-		 		soapBody = soapEnv.childNodes.item(i);
-			}
-		}
-		
-		var soapBodyRootElement = soapBody.firstElementChild;
 		
 		// get the values from dialog content
 		var editInputDialogContent = $("#EditInputDialogContent")[0];
 		
-		var childNodes = editInputDialogContent.childNodes;
+		var planMsg = "<Plan xmlns=\"http://docs.oasis-open.org/tosca/ns/2011/12\" id=\"" + 
+		optionId + "\" name=\"" + optionId + "\"><InputParameters>";
 		
+		var childNodes = editInputDialogContent.childNodes;
 		var counter = 0;
 		while(counter < childNodes.length){		
 			var child = childNodes.item(counter);
 			var soapLocalName = child.textContent;
 			var soapValue = $(child.nextSibling).val();
-			
-			for(var i = 0; i < soapBodyRootElement.childNodes.length; i++){
-				if(soapBodyRootElement.childNodes.item(i).localName == soapLocalName){
-					soapBodyRootElement.childNodes.item(i).textContent = soapValue;
-				}
-			}
+
+			var param = "<InputParameter name=\"" + soapLocalName + "\" type=\"String\" required=\"yes\">" + soapValue + "</InputParameter>";
+			planMsg += param;
+			console.log(param);
 			
 			counter += 2;
 		}
 
+		planMsg += "</InputParameters></Plan>";
+
 		// save input temporarily
-		optionInputMessageElement.textContent = (new XMLSerializer()).serializeToString(doc);
+		optionInputMessageElement.textContent = planMsg;//(new XMLSerializer()).serializeToString(planMsg);
 		
 		$("#EditInputDialog").dialog("close");
 	}
 	
 	function inputMessageHasMissingFields(){		
+		console.log("inputMessageHasMissingFields?");
 		var optionId = $("#SelectOptionButton")[0].getAttribute("optionId");
-		var optionInputMessageElement = $("#OptionListInput[optionid=" + optionId + "]")[0];
+		var optionInputMessageElement = $("#OptionListInput[optionid=\"" + optionId + "\"]")[0];
 		var optionInputMessageValue = optionInputMessageElement.textContent;
 
 		// check whether we contain some empty/missing input
 		if(optionInputMessageValue.indexOf("Please fill in") != -1){
+			console.log("inputMessageHasMissingFields!");
 			return true;
 		} else {
+			console.log("false = inputMessageHasMissingFields");
 			return false;
 		}
 	}
 			
 	function startWaitingForPlanResult() {
+		console.log("startWaitingForPlanResult");
 		setTimeout(
 			function() {
+				console.log("poll " + checkCallbackStatusUrl);
+				$.ajax({
+					type: "GET",
+				    url: "ApplicationInstantiation",
+				    data : {url : checkCallbackStatusUrl},
+				    dataType: "json",
+// 				    jsonpCallback: 'callback',
+				    success: function(data) {
+				    	
+				    	console.log ("poll result: " + data);
+				    	if (data.result.status === "PENDING") {
+							console.log("not finished, continue polling");
+							startWaitingForPlanResult();
+						} else {
+							console.log("result: " + data.result.url);
+							planResult = data.result.payload;
+							if(!instantiated){
+								instantiated = true;
+								updateUiWithPlanResultMessages();
+								$("#loadingContainer").fadeOut("slow");
+								$("#applicationUrlContainer").fadeIn("slow");
+							}else{
+								instantiated = false;
+								resetUi();
+								$("#loadingContainer").fadeOut("slow");
+								$("#actionContainer").fadeIn("slow");
+							}
+						}
+				    }
+				});
 				
-				$.get(checkCallbackStatusUrl, function(data) {
-					if (data["<%=CallbackStatusServlet.NO_CALLBACK_RECEIVED_YET%>"]) {
-						startWaitingForPlanResult();
-								} else {
-									planResult = data;
-									if(!instantiated){
-										instantiated = true;
-										updateUiWithPlanResultMessages();
-										$("#loadingContainer").fadeOut("slow");
-										$("#applicationUrlContainer").fadeIn("slow");
-									}else{
-										instantiated = false;
-										resetUi();
-										$("#loadingContainer").fadeOut("slow");
-										$("#actionContainer").fadeIn("slow");
-									}
-
-								}
-							}, "json");
+				
+// 				$.get(checkCallbackStatusUrl + "?callback=callback", function(data) {
+					
+// 				}, "jsonp");
 
 		}, 3000);
 	}
 	
 	function resetUi(){
+		console.log("resetUi");
 			$("#successSymbol").hide();
 			$("#failedSymbol").hide();
 			$("#playSymbol").hide();
@@ -257,33 +266,38 @@
 	}
 	
 	function updateUiWithPlanResultMessages() {
+		console.log("updateUiWithPlanResultMessages");
 		if("<%=CallbackEndpointServlet.NO_SELFSERVICE_MESSAGE%>" != planResult.selfserviceMessage) {
 			$("#applicationUrlContainer #SelfserviceMessage").text(planResult.selfserviceMessage);
 		}
 		if("<%=CallbackEndpointServlet.NO_SELFSERVICE_POLICY_MESSAGE%>" != planResult.selfservicePolicyMessage) {
-				setTimeout(function() {
-					alert(planResult.selfservicePolicyMessage);
-				}, 500);
-			}
-			if ("OK" == planResult.selfserviceStatus) {
-				$("#successSymbol").show();
-			}
-			if ("FAILED" == planResult.selfserviceStatus) {
-				$("#failedSymbol").show();
-			}
-			if ("" != planResult.applicationUrl) {
-				$("#playSymbol").show();
-			}
+			setTimeout(function() {
+				console.log("policy stuff: " + planResult.selfservicePolicyMessage);
+			}, 500);
+		}
+		if ("OK" == planResult.selfserviceStatus) {
+			$("#successSymbol").show();
+		}
+		if ("FAILED" == planResult.selfserviceStatus) {
+			$("#failedSymbol").show();
+		}
+		if ("" != planResult.json.selfserviceApplicationUrl) {
+			console.log("show play button for: " + planResult.json.selfserviceApplicationUrl);
+			$("#playSymbol").show();
+		}
 
-			if ("" != planResult.selfserviceServiceInstance) {
-				$("#terminateSymbol").show();
-			}
-		
+		if (null != planResult.json.selfserviceServiceInstance && "" != planResult.json.selfserviceServiceInstance) {
+			selfserviceServiceInstance = planResult.json.selfserviceServiceInstance;
+			console.log("show terminate button for " + planResult.json.selfserviceServiceInstance);
+			$("#terminateSymbol").show();
+		}
+	
 	}
 
 	function startApplication() {
+		console.log("startApplication");
 
-		var url = planResult.applicationUrl;
+		var url = planResult.json.selfserviceApplicationUrl;
 
 		// check if the url contains some kind of protocol
 		if (url.indexOf("://") == -1) {
@@ -295,10 +309,12 @@
 	}
 
 	function openOptionDialog() {
+		console.log("openOptionDialog");
 		$("#OptionDialog").dialog("open");
 	}
 
 	function setOptionButton(event, ui) {
+		console.log("setOptionButton");
 		// get selected element
 		var s = $(this).find('.ui-selected');
 
@@ -327,6 +343,7 @@
 	}
 
 	function formatXml(xml) {
+		console.log("formatXml");
 		var formatted = '';
 		var reg = /(>)(<)(\/*)/g;
 		xml = xml.replace(reg, '$1\r\n$2$3');
@@ -457,7 +474,9 @@ div.appIconRowContainer#row1>span.mirror {
 							<p id="OptionListName"><%=o.getName()%></p>
 							<p id="OptionListText"><%=o.getDescription()%></p>
 							<div id="OptionListInput" style="display: none;"
-								optionId="<%=o.getId()%>"><%=StringEscapeUtils.escapeHtml4(client.get(app, o.getPlanInputMessageUrl()))%></div>
+								optionId="<%=o.getId()%>">
+								<%=app.getMinimalPlanXML(o.getId())//StringEscapeUtils.escapeHtml4(client.get(app, o.getPlanInputMessageUrl()))
+								%></div>
 						</td>
 					</tr>
 					<%
