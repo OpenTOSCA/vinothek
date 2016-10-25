@@ -113,7 +113,7 @@ public class VinothekContainerClient {
 		String csarUrl = getContainerUrl() + CONFIG.CSAR_LIST_REL_URL;
 
 		try {
-			String ret = this.jerseyClient.resource(csarUrl).accept(MediaType.MEDIA_TYPE_WILDCARD).get(String.class);
+			String ret = this.jerseyClient.resource(csarUrl).accept(MediaType.TEXT_XML).get(String.class);
 
 			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder builder = factory.newDocumentBuilder();
