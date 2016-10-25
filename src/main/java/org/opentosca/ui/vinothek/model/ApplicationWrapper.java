@@ -1,10 +1,11 @@
 package org.opentosca.ui.vinothek.model;
 
+import java.util.List;
+
 import org.eclipse.winery.model.selfservice.Application;
 import org.eclipse.winery.model.selfservice.ApplicationOption;
 import org.opentosca.model.tosca.TParameter;
 import org.opentosca.model.tosca.TPlan;
-import org.opentosca.ui.admin.action.GetSelectedCSARPublicPlansAction;
 import org.opentosca.ui.admin.action.client.ContainerClient;
 import org.opentosca.ui.vinothek.CONFIG;
 
@@ -76,11 +77,10 @@ public class ApplicationWrapper extends Application {
 		
 		Options options = new Options();
 		
-		GetSelectedCSARPublicPlansAction action = new GetSelectedCSARPublicPlansAction();
-		action.setSelectedCSAR(getCsarName());
-		action.execute();
-		System.out.println("Application Wrapper - Found plans: ");
-		for (TPlan plan : action.getPublicPlans()) {
+		ContainerClient client = ContainerClient.getInstance();
+		List<TPlan> plans = client.getPlanDTOs(getCsarName());
+		
+		for (TPlan plan : plans) {
 			System.out.println("   " + plan.getId());
 			
 			ApplicationOption option = new ApplicationOption();

@@ -9,6 +9,7 @@ import javax.xml.bind.annotation.XmlValue;
 import org.opentosca.model.tosca.TBoolean;
 import org.opentosca.model.tosca.TParameter;
 
+//@XmlTransient
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "tParameterDTO")
 public class TParameterDTO {
